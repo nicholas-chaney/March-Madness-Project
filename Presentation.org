@@ -1,0 +1,380 @@
+#+title: March Madness Machine Learning
+#+author: Nick Chaney, Thomas Lingren, Nikola Sasaroga (pledged)
+#+startup: overview hideblocks indent
+#+property: header-args:R :session *R* :exports both :results output
+#+ATTR_HTML: :width="800px"
+
+* What was our goal?
+Our goal was to create a machine learning model that can predict the
+winner of each game in the NCAA March Madness Tournament. We
+determined that if our model could accurately predict 50% or better
+that it was successful.
+
+* What is the March Madness Tournament?
+March Madness is a collegiate basketball tournament that takes place
+in the month of March. The teams in this tournament are the 64 best
+teams in Division 1 college basketball(Wilco, 2023).
+
+[[./march-madness-logo.jpg]]
+
+* Import data
+
+Read in the csv file containing our data. Then printed the structure
+and a table of the winners. You can see that the data set has 51
+different variables.
+#+begin_src R
+  game_data <- read.csv('GameDataFixed.csv', header = TRUE, stringsAsFactors = TRUE)
+  str(game_data)
+  table(game_data$winner)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+'data.frame':	1260 obs. of  51 variables:
+ $ X     : int  2360 2362 2364 2366 2368 2370 2372 2374 2376 2378 ...
+ $ index : int  0 2 4 6 8 10 12 14 16 18 ...
+ $ Year  : int  2000 2000 2000 2000 2000 2000 2000 2000 2000 2000 ...
+ $ Seed1 : int  1 8 5 4 6 3 7 2 1 5 ...
+ $ Seed2 : int  16 9 12 13 11 14 10 15 8 4 ...
+ $ Round : int  0 0 0 0 0 0 0 0 1 1 ...
+ $ G1    : int  34 34 37 32 29 34 30 33 34 37 ...
+ $ FG1   : num  30.7 30.7 29.8 26.1 28 27.4 26.9 23.9 30.7 29.8 ...
+ $ FGA1  : num  63.9 66.7 62.1 60.2 58.5 57.2 57.4 58 63.9 62.1 ...
+ $ FG.1  : num  0.481 0.46 0.48 0.433 0.478 0.479 0.469 0.413 0.481 0.48 ...
+ $ FT1   : num  18.2 12.6 17 16.4 17.4 15.8 16 12.3 18.2 17 ...
+ $ FTA1  : num  24.5 19.4 23.9 23.8 24.5 22.6 21.5 18.8 24.5 23.9 ...
+ $ FT.1  : num  0.742 0.65 0.71 0.688 0.709 0.701 0.745 0.656 0.742 0.71 ...
+ $ TRB1  : num  38.6 44.3 39.2 36.8 38.9 38.6 34.6 39 38.6 39.2 ...
+ $ AST1  : num  17.2 18.5 16.5 15.6 16.1 18.9 16.4 14.3 17.2 16.5 ...
+ $ STL1  : num  9.8 9.2 9.9 9.3 7.5 7.6 6.9 9.5 9.8 9.9 ...
+ $ BLK1  : num  5.6 5.5 3.8 3.7 4.9 3.6 2.9 4.2 5.6 3.8 ...
+ $ TOV1  : num  14.1 17.3 16.4 14.3 14.6 14.2 15.6 9.8 14.1 16.4 ...
+ $ PF1   : num  16.2 21.3 20.3 19.3 18.1 17 19.7 13.9 16.2 20.3 ...
+ $ PTS1  : num  88 78.7 83.8 75.8 77.7 77.1 75.6 68.5 88 83.8 ...
+ $ G2    : int  31 33 31 29 34 31 32 31 34 32 ...
+ $ FG2   : num  21.7 26.6 24.3 24.4 27.3 26.7 25.2 25 30.7 26.1 ...
+ $ FGA2  : num  55.6 58.6 51.6 54 61.6 58.5 58.3 55 66.7 60.2 ...
+ $ FG.2  : num  0.39 0.453 0.471 0.452 0.444 0.456 0.433 0.454 0.46 0.433 ...
+ $ FT2   : num  12.5 13.3 14.5 11.7 11.4 13.8 13.5 15.6 12.6 16.4 ...
+ $ FTA2  : num  18.3 19.8 21.9 18.1 17 20.1 19.9 21.7 19.4 23.8 ...
+ $ FT.2  : num  0.686 0.669 0.659 0.644 0.669 0.687 0.678 0.719 0.65 0.688 ...
+ $ TRB2  : num  36.4 39.5 34 36.4 38.1 36.3 37.8 35.8 44.3 36.8 ...
+ $ AST2  : num  13.2 15 13.9 15 14.5 14 14.3 15.3 18.5 15.6 ...
+ $ STL2  : num  7.3 8.1 7.6 5.4 9.4 8.7 7 10.1 9.2 9.3 ...
+ $ BLK2  : num  2.8 3.8 2.8 4.1 2.9 3.9 6.2 3.4 5.5 3.7 ...
+ $ TOV2  : num  15.7 16.3 12.6 12.7 14.8 13.4 14.9 16.1 17.3 14.3 ...
+ $ PF2   : num  17.1 18.1 16.5 16.4 19.4 18.2 17.2 18 21.3 19.3 ...
+ $ PTS2  : num  62.9 72.3 68 67 73 74.4 71.7 73.5 78.7 75.8 ...
+ $ X2P1  : num  22.4 26 22.6 18.8 23.6 21.1 21.2 15.6 22.4 22.6 ...
+ $ X2PA1 : num  42.1 53.1 42.4 39.8 46.9 40.8 39 34.1 42.1 42.4 ...
+ $ X2P.1 : num  0.532 0.49 0.535 0.474 0.503 0.517 0.544 0.458 0.532 0.535 ...
+ $ X3P1  : num  8.4 4.7 7.2 7.2 4.4 6.4 5.7 8.3 8.4 7.2 ...
+ $ X3PA1 : num  21.8 13.6 19.8 20.4 11.6 16.4 18.4 23.8 21.8 19.8 ...
+ $ X3P.1 : num  0.383 0.343 0.363 0.354 0.378 0.386 0.312 0.348 0.383 0.363 ...
+ $ X2P2  : num  14.7 20.7 19.4 17.9 20.4 19.4 17.4 16.9 26 18.8 ...
+ $ X2PA2 : num  34.9 41.6 38.5 35.4 41.4 38.3 36.9 34.4 53.1 39.8 ...
+ $ X2P.2 : num  0.421 0.497 0.503 0.504 0.492 0.508 0.472 0.493 0.49 0.474 ...
+ $ X3P2  : num  7 5.9 4.9 6.5 7 7.3 7.8 8 4.7 7.2 ...
+ $ X3PA2 : num  20.7 17.1 13.1 18.6 20.2 20.2 21.4 20.6 13.6 20.4 ...
+ $ X3P.2 : num  0.336 0.346 0.377 0.351 0.344 0.359 0.365 0.39 0.343 0.354 ...
+ $ ORB1  : num  13.3 16.6 14.5 12.4 11.3 11.6 11.2 15.1 13.3 14.5 ...
+ $ DRB1  : num  25.3 27.7 24.7 24.4 27.6 27 23.4 23.9 25.3 24.7 ...
+ $ ORB2  : num  12.3 15.7 10.4 10.7 12.4 12.6 13.5 11 16.6 12.4 ...
+ $ DRB2  : num  24.1 23.8 23.6 25.7 25.7 23.7 24.4 24.7 27.7 24.4 ...
+ $ winner: Factor w/ 2 levels "Team1","Team2": 1 1 1 1 2 1 2 1 1 1 ...
+
+Team1 Team2 
+  827   433
+#+end_example
+
+* Train data
+- The following model relates 45 of the independent variables to the
+  dependent variable 'winner':
+  #+begin_src R
+    data_new <- game_data                                # put data into data_new 
+    data_new[is.na(data_new) | data_new == "Inf"] <- NA  # Replace NaN & Inf with NA
+   
+    library(naivebayes)                                  #Load naivebayes library
+    model <- naive_bayes(winner ~  Seed1 + Seed2 + FG1 + FGA1 +      #run naive_bayes on data
+                           FG.1 + FT1 + FTA1 + FT.1 + TRB1 + AST1 +
+                           STL1 + BLK1 + TOV1 + PF1 + PTS1 + G2 + FG2 +
+                           FGA2 + FG.2 + FT2 + FTA2 + FT.2 + TRB2 +
+                           AST2 + STL2 + BLK2 + TOV2 + PF2 + PTS2 +
+                           X2P1 + X2PA1 + X2P.1 + X3P1 + X3PA1 + X3P.1 +
+                           X2P2 + X2PA2 + X2P.2 + X3P2 + X3PA2 + X3P.2 +
+                           ORB1 + DRB1 + ORB2 + DRB2, data = data_new)
+
+  #+end_src
+  
+  #+RESULTS:
+  : 
+  : naivebayes 0.9.7 loaded
+  : Warning message:
+  : package 'naivebayes' was built under R version 4.2.3
+
+
+- Print the model
+  #+begin_src R
+    model
+  #+end_src 
+
+  #+RESULTS:
+  #+begin_example
+
+  ================================== Naive Bayes ================================== 
+
+   Call: 
+  naive_bayes.formula(formula = winner ~ Seed1 + Seed2 + FG1 + 
+      FGA1 + FG.1 + FT1 + FTA1 + FT.1 + TRB1 + AST1 + STL1 + BLK1 + 
+      TOV1 + PF1 + PTS1 + G2 + FG2 + FGA2 + FG.2 + FT2 + FTA2 + 
+      FT.2 + TRB2 + AST2 + STL2 + BLK2 + TOV2 + PF2 + PTS2 + X2P1 + 
+      X2PA1 + X2P.1 + X3P1 + X3PA1 + X3P.1 + X2P2 + X2PA2 + X2P.2 + 
+      X3P2 + X3PA2 + X3P.2 + ORB1 + DRB1 + ORB2 + DRB2, data = data_new)
+
+  --------------------------------------------------------------------------------- 
+
+  Laplace smoothing: 0
+
+  --------------------------------------------------------------------------------- 
+
+   A priori probabilities: 
+
+      Team1     Team2 
+  0.6563492 0.3436508 
+
+  --------------------------------------------------------------------------------- 
+
+   Tables: 
+
+  --------------------------------------------------------------------------------- 
+   ::: Seed1 (Gaussian) 
+  --------------------------------------------------------------------------------- 
+
+  Seed1     Team1    Team2
+    mean 3.916566 6.027714
+    sd   2.867376 3.110491
+
+  --------------------------------------------------------------------------------- 
+   ::: Seed2 (Gaussian) 
+  --------------------------------------------------------------------------------- 
+
+  Seed2     Team1    Team2
+    mean 9.958888 6.484988
+    sd   4.622375 4.210369
+
+  --------------------------------------------------------------------------------- 
+   ::: FG1 (Gaussian) 
+  --------------------------------------------------------------------------------- 
+
+  FG1        Team1     Team2
+    mean 26.958767 26.265820
+    sd    2.154410  1.913581
+
+  --------------------------------------------------------------------------------- 
+   ::: FGA1 (Gaussian) 
+  --------------------------------------------------------------------------------- 
+
+  FGA1       Team1     Team2
+    mean 57.727932 57.116166
+    sd    3.595990  3.316662
+
+  --------------------------------------------------------------------------------- 
+   ::: FG.1 (Gaussian) 
+  --------------------------------------------------------------------------------- 
+
+  FG.1        Team1      Team2
+    mean 0.46691052 0.45999538
+    sd   0.02207963 0.02137604
+
+  ---------------------------------------------------------------------------------
+
+  # ... and 40 more tables
+
+  ---------------------------------------------------------------------------------
+  #+end_example
+
+
+- Evaluate model performance using ~summary~
+
+  #+begin_src R
+    summary(model)
+  #+end_src
+
+  #+RESULTS:
+  #+begin_example
+  
+  ================================== Naive Bayes ================================== 
+
+  - Call: naive_bayes.formula(formula = winner ~ Seed1 + Seed2 + FG1 +      FGA1 + FG.1 + FT1 + FTA1 + FT.1 + TRB1 + AST1 + STL1 + BLK1 +      TOV1 + PF1 + PTS1 + G2 + FG2 + FGA2 + FG.2 + FT2 + FTA2 +      FT.2 + TRB2 + AST2 + STL2 + BLK2 + TOV2 + PF2 + PTS2 + X2P1 +      X2PA1 + X2P.1 + X3P1 + X3PA1 + X3P.1 + X2P2 + X2PA2 + X2P.2 +      X3P2 + X3PA2 + X3P.2 + ORB1 + DRB1 + ORB2 + DRB2, data = data_new) 
+  - Laplace: 0 
+  - Classes: 2 
+  - Samples: 1260 
+  - Features: 45 
+  - Conditional distributions: 
+      - Gaussian: 45
+  - Prior probabilities: 
+      - Team1: 0.6563
+      - Team2: 0.3437
+
+  ---------------------------------------------------------------------------------
+  #+end_example
+  
+* Predict Model
+Create predictions using naive bayes model
+#+begin_src R
+ 
+  team1_win_pred <- predict(model, data_new)
+   team1_win_pred
+
+
+  # Calculate the model's accuracy
+  mean(data_new$winner == team1_win_pred)
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+Warning message:
+predict.naive_bayes(): more features in the newdata are provided as there are probability tables in the object. Calculation is performed based on features to be found in the tables.
+
+   [1] Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2
+  [13] Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+  [25] Team2 Team2 Team2 Team2 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team1
+  [37] Team1 Team1 Team2 Team1 Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team1
+  [49] Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team2 Team2 Team2 Team2 Team2
+  [61] Team1 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team1
+  [73] Team2 Team1 Team2 Team2 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team1
+  [85] Team1 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team2 Team1
+  [97] Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team1
+ [109] Team1 Team2 Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team1
+ [121] Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team1
+ [133] Team1 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team1 Team1
+ [145] Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team1 Team1 Team2 Team1
+ [157] Team1 Team1 Team1 Team1 Team2 Team1 Team2 Team1 Team1 Team1 Team2 Team2
+ [169] Team1 Team2 Team2 Team1 Team1 Team2 Team1 Team1 Team1 Team2 Team1 Team1
+ [181] Team1 Team2 Team2 Team2 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team1
+ [193] Team1 Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team1
+ [205] Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team1 Team2 Team2 Team2 Team2
+ [217] Team1 Team1 Team2 Team1 Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team1
+ [229] Team2 Team2 Team2 Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team1 Team1
+ [241] Team2 Team1 Team1 Team1 Team1 Team2 Team1 Team2 Team1 Team1 Team2 Team2
+ [253] Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team2 Team2
+ [265] Team2 Team1 Team2 Team1 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team1
+ [277] Team2 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+ [289] Team2 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team1
+ [301] Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team2 Team2
+ [313] Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team1 Team1 Team1 Team1
+ [325] Team2 Team1 Team2 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+ [337] Team1 Team1 Team1 Team2 Team1 Team2 Team1 Team1 Team1 Team1 Team2 Team1
+ [349] Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team2
+ [361] Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team2
+ [373] Team1 Team1 Team2 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+ [385] Team1 Team1 Team2 Team2 Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team1
+ [397] Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team1 Team2 Team2 Team2 Team2
+ [409] Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2
+ [421] Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team1 Team1 Team1 Team1
+ [433] Team1 Team2 Team2 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+ [445] Team1 Team2 Team1 Team2 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team1
+ [457] Team1 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team2
+ [469] Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team1 Team1
+ [481] Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+ [493] Team1 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team2
+ [505] Team1 Team2 Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team2
+ [517] Team1 Team2 Team1 Team1 Team2 Team1 Team1 Team2 Team2 Team2 Team1 Team1
+ [529] Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+ [541] Team2 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team2 Team2
+ [553] Team1 Team2 Team1 Team2 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team2
+ [565] Team2 Team2 Team2 Team1 Team2 Team2 Team1 Team1 Team1 Team2 Team1 Team2
+ [577] Team2 Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team1 Team1 Team1 Team1
+ [589] Team1 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team1 Team1
+ [601] Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team2 Team1 Team1 Team1
+ [613] Team1 Team1 Team1 Team1 Team2 Team1 Team2 Team1 Team1 Team2 Team2 Team2
+ [625] Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team2 Team1
+ [637] Team2 Team1 Team2 Team2 Team2 Team2 Team1 Team1 Team2 Team1 Team1 Team2
+ [649] Team1 Team2 Team1 Team2 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team1
+ [661] Team1 Team1 Team1 Team1 Team2 Team1 Team2 Team1 Team1 Team2 Team1 Team2
+ [673] Team2 Team2 Team2 Team1 Team1 Team2 Team2 Team1 Team2 Team1 Team1 Team1
+ [685] Team2 Team1 Team1 Team1 Team2 Team2 Team2 Team1 Team1 Team1 Team2 Team1
+ [697] Team1 Team2 Team1 Team1 Team1 Team1 Team2 Team2 Team2 Team2 Team2 Team2
+ [709] Team1 Team2 Team2 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team2
+ [721] Team2 Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team1 Team2 Team1 Team1
+ [733] Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team2 Team1 Team2 Team2 Team1
+ [745] Team1 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team2 Team2 Team2 Team1
+ [757] Team1 Team1 Team1 Team1 Team2 Team2 Team1 Team1 Team1 Team2 Team2 Team2
+ [769] Team1 Team2 Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team2 Team1 Team1
+ [781] Team2 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team1 Team2
+ [793] Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team2 Team2 Team1 Team2 Team1
+ [805] Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team2
+ [817] Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team2 Team1 Team2 Team1 Team1
+ [829] Team2 Team2 Team2 Team2 Team2 Team2 Team1 Team2 Team2 Team1 Team1 Team1
+ [841] Team1 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team2
+ [853] Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team1 Team2 Team2 Team2 Team2
+ [865] Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team2 Team2
+ [877] Team2 Team1 Team2 Team2 Team2 Team2 Team1 Team1 Team2 Team1 Team2 Team2
+ [889] Team1 Team1 Team2 Team2 Team2 Team2 Team2 Team2 Team2 Team1 Team2 Team2
+ [901] Team1 Team2 Team1 Team2 Team1 Team2 Team2 Team2 Team2 Team2 Team2 Team2
+ [913] Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team1 Team2 Team2 Team2 Team2
+ [925] Team2 Team1 Team2 Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team1 Team2
+ [937] Team2 Team2 Team2 Team1 Team2 Team2 Team2 Team2 Team2 Team1 Team2 Team1
+ [949] Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team2 Team2 Team2 Team2
+ [961] Team1 Team2 Team2 Team1 Team2 Team1 Team2 Team1 Team1 Team1 Team2 Team2
+ [973] Team1 Team1 Team2 Team1 Team2 Team1 Team2 Team2 Team1 Team2 Team1 Team1
+ [985] Team1 Team2 Team2 Team1 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team2
+ [997] Team2 Team1 Team2 Team2 Team2 Team2 Team2 Team2 Team2 Team1 Team2 Team2
+[1009] Team1 Team1 Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team2 Team2
+[1021] Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+[1033] Team1 Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team1 Team1 Team2 Team1
+[1045] Team2 Team1 Team2 Team2 Team2 Team2 Team2 Team2 Team2 Team1 Team2 Team1
+[1057] Team1 Team2 Team1 Team2 Team1 Team1 Team2 Team2 Team2 Team2 Team1 Team1
+[1069] Team2 Team2 Team2 Team1 Team2 Team2 Team2 Team2 Team1 Team2 Team1 Team1
+[1081] Team2 Team2 Team2 Team2 Team1 Team1 Team1 Team2 Team1 Team1 Team1 Team1
+[1093] Team1 Team1 Team1 Team2 Team2 Team2 Team1 Team1 Team2 Team1 Team1 Team2
+[1105] Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team2 Team2 Team1 Team1 Team1
+[1117] Team1 Team1 Team1 Team1 Team2 Team1 Team2 Team1 Team1 Team2 Team2 Team2
+[1129] Team1 Team2 Team1 Team2 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+[1141] Team2 Team1 Team1 Team1 Team2 Team2 Team1 Team2 Team1 Team1 Team2 Team2
+[1153] Team1 Team1 Team1 Team2 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team2
+[1165] Team1 Team2 Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team2 Team2 Team2
+[1177] Team2 Team2 Team2 Team1 Team1 Team1 Team1 Team2 Team1 Team1 Team1 Team2
+[1189] Team2 Team2 Team2 Team2 Team2 Team2 Team1 Team2 Team1 Team1 Team2 Team1
+[1201] Team1 Team2 Team1 Team2 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team1
+[1213] Team1 Team2 Team2 Team1 Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team2
+[1225] Team1 Team2 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1 Team1
+[1237] Team2 Team2 Team2 Team1 Team2 Team2 Team1 Team2 Team2 Team2 Team1 Team1
+[1249] Team2 Team1 Team1 Team2 Team2 Team2 Team1 Team2 Team2 Team2 Team2 Team2
+Levels: Team1 Team2
+
+[1] 0.6992063
+#+end_example
+
+* Results
+ Our model had an acuracy of 70%. To see visualize these results, we took the predicted winners of each
+ game in the 2019 tournament and compared it to the actual
+ winners. The bracket below shows the results, and for the 2019
+ tournament there was only an accuracy of 43%
+ [[./bracket.jpg]]
+
+* References
+ 1. Gumm, Jordan, et al. “A Machine Learning Strategy for Predicting March Madness Winners.”
+       2015 IEEE/ACIS 16th International Conference on Software
+       Engineering, Artificial Intelligence, Networking and
+       Parallel/Distributed Computing (SNPD), 2015,
+
+ 2. Majka M (2019). _naivebayes: High Performance Implementation of the
+      Naive Bayes Algorithm in R_. R package version 0.9.7,
+ 
+ 
+
+ 3. Morrell, Eric. “How to Use Machine Learning to Predict NCAA March
+       Madness.” Analytics8, 2 Feb. 2023,
+
+ 4. Shen, Gang, et al. “Predicting Results of March Madness Using
+       Three Different Methods.” Journal of Sports Research, vol. 3, no. 1, 2016, pp. 10–17.,
+
+ 5.Sundberg, Andrew. “College Basketball Dataset.”
+       Kaggle, 16 Mar. 2021,
+
+ 6.Wilco, Daniel. “The Absurd Odds of a Perfect NCAA
+       Bracket.” NCAA.com, NCAA.com, 13 Mar. 2022,
